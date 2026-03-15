@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: simple-taobao-gateway
+
+  # Nacos 配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 10.0.0.104:8848
+        namespace: public
+        group: DEFAULT_GROUP
+      config:
+        server-addr: 10.0.0.104:8848
+        namespace: public
+        group: DEFAULT_GROUP
+        file-extension: yml
+        import-check:
+          enabled: false
+
+    # Sentinel 配置
+    sentinel:
+      enabled: true
+      transport:
+        dashboard: 10.0.0.104:8080
+        port: 8719
+      log:
+        dir: /tmp/csp/logs
+
+    # Gateway 路由配置
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 用户服务
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=1
+
+        # 商品服务
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - StripPrefix=1
+
+        # 购物车服务
+        - id: cart-service
+          uri: lb://cart-service
+          predicates:
+            - Path=/api/cart/**
+          filters:
+            - StripPrefix=1
+
+        # 订单服务
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=1
+
+        # 消息服务
+        - id: message-service
+          uri: lb://message-service
+          predicates:
+            - Path=/api/messages/**
+          filters:
+            - StripPrefix=1
+
+server:
+  port: 8090
+
+logging:
+  level:
+    org.springframework.cloud.gateway: debug
+    com.alibaba.nacos: info

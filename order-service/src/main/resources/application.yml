@@ -1,0 +1,51 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: order-service
+
+  # Nacos 配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 10.0.0.104:8848
+        namespace: public
+        group: DEFAULT_GROUP
+      config:
+        server-addr: 10.0.0.104:8848
+        namespace: public
+        group: DEFAULT_GROUP
+        file-extension: yml
+        import-check:
+          enabled: false
+
+  # 数据源配置
+  datasource:
+    url: jdbc:mysql://10.0.0.104:3307/simple_taobao?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: 123456
+
+  # Redis 配置
+  redis:
+    host: 10.0.0.104
+    port: 6380
+    database: 0
+
+  # RocketMQ 配置
+  rocketmq:
+    name-server: 10.0.0.104:9876
+    producer:
+      group: order-producer-group
+      send-message-timeout: 30000
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.taobao.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    com.taobao: debug
+    com.alibaba.nacos: info

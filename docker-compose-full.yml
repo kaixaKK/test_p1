@@ -1,0 +1,225 @@
+version: '3.8'
+
+services:
+  # ==================== 基础设施 ====================
+
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0.36
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: simple_taobao
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - vibecoding
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - vibecoding
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nacos 服务注册/配置中心
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: nacos
+    environment:
+      - MODE=standalone
+      - JVM_XMS=256m
+      - JVM_XMX=512m
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=mysql
+      - MYSQL_SERVICE_DB_NAME=nacos
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_USER=root
+      - MYSQL_SERVICE_PASSWORD=123456
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - vibecoding
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8848/nacos"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # Sentinel 流量控制/熔断
+  sentinel:
+    image: sentinelproject/sentinel-dashboard:1.8.6
+    container_name: sentinel
+    environment:
+      - JAVA_OPTS=-Dserver.port=8080
+    ports:
+      - "8858:8080"
+    networks:
+      - vibecoding
+
+  # ==================== 微服务 ====================
+
+  # 用户服务
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: ../Dockerfile
+    container_name: user-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/simple_taobao?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    networks:
+      - vibecoding
+    restart: on-failure
+
+  # 商品服务
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: ../Dockerfile
+    container_name: product-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/simple_taobao?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    networks:
+      - vibecoding
+    restart: on-failure
+
+  # 购物车服务
+  cart-service:
+    build:
+      context: ./cart-service
+      dockerfile: ../Dockerfile
+    container_name: cart-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/simple_taobao?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+    ports:
+      - "8083:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    networks:
+      - vibecoding
+    restart: on-failure
+
+  # 订单服务
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: ../Dockerfile
+    container_name: order-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/simple_taobao?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+    ports:
+      - "8084:8084"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    networks:
+      - vibecoding
+    restart: on-failure
+
+  # 留言服务
+  message-service:
+    build:
+      context: ./message-service
+      dockerfile: ../Dockerfile
+    container_name: message-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/simple_taobao?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+    ports:
+      - "8085:8085"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    networks:
+      - vibecoding
+    restart: on-failure
+
+  # API 网关
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: ../Dockerfile
+    container_name: gateway
+    environment:
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=nacos:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=nacos:8848
+    ports:
+      - "8090:8090"
+    depends_on:
+      nacos:
+        condition: service_healthy
+    networks:
+      - vibecoding
+    restart: on-failure
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  vibecoding:
+    driver: bridge

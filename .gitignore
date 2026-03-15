@@ -1,0 +1,28 @@
+# archives
+*.tar.gz
+*.zip
+*.rar
+
+# java
+target/
+*.class
+
+# ide
+.idea/
+*.iml
+.vscode/
+
+# node
+node_modules/
+**/node_modules/
+dist/
+npm-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+
+# vite/cache
+.vite/
+
+# os
+.DS_Store
+Thumbs.db

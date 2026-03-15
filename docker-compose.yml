@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # Nacos 服务注册/配置中心 (使用内置 Derby 数据库)
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: nacos
+    environment:
+      - MODE=standalone
+      - JVM_XMS=256m
+      - JVM_XMX=256m
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
+    networks:
+      - vibecoding
+
+  # Sentinel 流量控制/熔断
+  sentinel:
+    image: sentinelproject/sentinel-dashboard:1.8.6
+    container_name: sentinel
+    environment:
+      - JAVA_OPTS=-Dserver.port=8080 -Dcsp.sentinel.dashboard.server=sentinel:8080 -Dproject.name=sentinel-dashboard
+    ports:
+      - "8080:8080"
+    networks:
+      - vibecoding
+
+  # RocketMQ Name Server
+  rocketmq-namesrv:
+    image: apache/rocketmq:4.9.5
+    container_name: rocketmq-namesrv
+    command: sh mqnamesrv
+    ports:
+      - "9876:9876"
+    networks:
+      - vibecoding
+
+  # RocketMQ Broker
+  rocketmq-broker:
+    image: apache/rocketmq:4.9.5
+    container_name: rocketmq-broker
+    command: sh mqbroker -n rocketmq-namesrv:9876
+    ports:
+      - "10911:10911"
+    environment:
+      - JAVA_OPTS=-Drocketmq.broker.diskCheckEnabled=false
+    networks:
+      - vibecoding
+    depends_on:
+      - rocketmq-namesrv
+
+  # RocketMQ Console
+  rocketmq-console:
+    image: apacherocketmq/rocketmq-console:2.0.0
+    container_name: rocketmq-console
+    environment:
+      - JAVA_OPTS=-Drocketmq.namesrv.addr=rocketmq-namesrv:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false
+    ports:
+      - "8082:8080"
+    networks:
+      - vibecoding
+    depends_on:
+      - rocketmq-namesrv
+
+  # Seata 分布式事务 (使用内置文件存储)
+  seata-server:
+    image: seataio/seata-server:1.7.0
+    container_name: seata-server
+    environment:
+      - SEATA_PORT=8091
+      - STORE_MODE=file
+      - SEATA_IP=seata-server
+    ports:
+      - "8091:8091"
+      - "7091:7091"
+    networks:
+      - vibecoding
+
+networks:
+  vibecoding:
+    driver: bridge
