@@ -59,17 +59,14 @@ public class OrderTimeoutConfig {
         // 2. 发送 RocketMQ 延迟消息
         // 延迟级别：1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h
         // 这里设置30分钟后触发
-        rocketMQTemplate.asyncSend(ROCKETMQ_TOPIC, orderId.toString(), new org.apache.rocketmq.client.producer.SendCallback() {
-            @Override
-            public void onSuccess(org.apache.rocketmq.client.producer.SendResult sendResult) {
-                System.out.println("Order timeout message sent, orderId: " + orderId);
-            }
-
-            @Override
-            public void onException(Throwable e) {
-                System.err.println("Failed to send order timeout message, orderId: " + orderId);
-            }
-        }, 30000, 3); // 延迟30秒发送（实际生产应设置为订单过期时间）
+        // 注意：使用syncSend替代asyncSend，因为API版本兼容性问题
+        try {
+            rocketMQTemplate.syncSend(ROCKETMQ_TOPIC, orderId.toString(), 30000, 3);
+            System.out.println("Order timeout message sent, orderId: " + orderId);
+        } catch (Exception e) {
+            System.err.println("Failed to send order timeout message, orderId: " + orderId);
+            e.printStackTrace();
+        }
     }
 
     /**
